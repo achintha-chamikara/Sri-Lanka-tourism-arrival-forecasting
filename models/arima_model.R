@@ -1,29 +1,42 @@
-# arima_model.R
+# arima_model.R (fixed + safer)
+# - Removes BoxCox auto (prevents Guerrero warning when zeros exist)
+# - Adds strict length checks
+# - Robust MAPE (ignores zero actuals)
 
 library(forecast)
-library(Metrics)
 
 run_arima_model <- function(train_ts, test_ts) {
-  # Auto ARIMA on training data
-  auto_arima_model <- auto.arima(train_ts, 
-                                 seasonal = TRUE, 
-                                 stepwise = FALSE, 
-                                 approximation = FALSE)
-  
-  # Forecast over test period
-  forecast_length <- length(test_ts)
-  sarima_forecast <- forecast(auto_arima_model, h = forecast_length)
-  
-  # Extract predictions and actuals
+  stopifnot(length(test_ts) > 0)
+
+  # NOTE:
+  # If your data contains zeros/negatives (e.g., during COVID collapse),
+  # lambda="auto" triggers Guerrero warnings and can distort forecasts.
+  # Start without lambda. You can add transformations later.
+  fit <- auto.arima(
+    train_ts,
+    seasonal = TRUE,
+    stepwise = FALSE,
+    approximation = FALSE
+  )
+
+  h <- length(test_ts)
+  fc <- forecast(fit, h = h)
+
   actual <- as.numeric(test_ts)
-  predicted <- as.numeric(sarima_forecast$mean)
-  
-  # Calculate metrics
-  ME   <- mean(predicted - actual, na.rm = TRUE)
-  RMSE <- sqrt(mean((predicted - actual)^2, na.rm = TRUE))
-  MAE  <- mean(abs(predicted - actual), na.rm = TRUE)
-  MAPE <- mean(abs((predicted - actual) / actual) * 100, na.rm = TRUE)
-  
+  predicted <- as.numeric(fc$mean)
+
+  # Guardrails: prevent recycling / misalignment
+  stopifnot(length(actual) == length(predicted))
+
+  err <- predicted - actual
+  ME <- mean(err, na.rm = TRUE)
+  RMSE <- sqrt(mean(err^2, na.rm = TRUE))
+  MAE <- mean(abs(err), na.rm = TRUE)
+
+  # MAPE: exclude zeros
+  non_zero <- !is.na(actual) & !is.na(predicted) & actual != 0
+  MAPE <- if (sum(non_zero) > 0) mean(abs(err[non_zero] / actual[non_zero]) * 100) else NA_real_
+
   metrics <- data.frame(
     Model = "ARIMA",
     ME = ME,
@@ -31,11 +44,10 @@ run_arima_model <- function(train_ts, test_ts) {
     MAE = MAE,
     MAPE = MAPE
   )
-  
-  # Return results
+
   list(
-    model = auto_arima_model,
-    forecast = sarima_forecast,
+    model = fit,
+    forecast = fc,
     metrics = metrics,
     actual = actual,
     predicted = predicted
