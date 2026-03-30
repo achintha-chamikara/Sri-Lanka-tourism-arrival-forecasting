@@ -99,25 +99,15 @@ pacf(full_ts, main = "PACF (raw)", lag.max = 48, na.action = na.pass)
 par(mfrow = c(1, 1))
 dev.off()
 
-# ACF/PACF log1p (safe with zeros)
-full_ts_log <- log1p(pmax(full_ts, 0))
-plot_path_acf_pacf_log <- here("outputs", "plots", "04_acf_pacf_log1p.png")
-png(plot_path_acf_pacf_log, width = 1400, height = 700)
-par(mfrow = c(1, 2))
-acf(full_ts_log, main = "ACF (log1p)", lag.max = 48, na.action = na.pass)
-pacf(full_ts_log, main = "PACF (log1p)", lag.max = 48, na.action = na.pass)
-par(mfrow = c(1, 1))
-dev.off()
+# ACF/PACF differenced (raw)
+full_ts_d1 <- diff(full_ts, differences = 1)
+full_ts_d1_D12 <- diff(full_ts_d1, lag = 12)
 
-# ACF/PACF differenced (common for ARIMA)
-full_ts_log_d1 <- diff(full_ts_log, differences = 1)
-full_ts_log_d1_D12 <- diff(full_ts_log_d1, lag = 12)
-
-plot_path_acf_pacf_diff <- here("outputs", "plots", "05_acf_pacf_diff.png")
+plot_path_acf_pacf_diff <- here("outputs", "plots", "04_acf_pacf_diff.png")
 png(plot_path_acf_pacf_diff, width = 1400, height = 700)
 par(mfrow = c(1, 2))
-acf(full_ts_log_d1_D12, main = "ACF (diff 1 + seasonal diff 12)", lag.max = 48, na.action = na.pass)
-pacf(full_ts_log_d1_D12, main = "PACF (diff 1 + seasonal diff 12)", lag.max = 48, na.action = na.pass)
+acf(full_ts_d1_D12, main = "ACF (diff 1 + seasonal diff 12)", lag.max = 48, na.action = na.pass)
+pacf(full_ts_d1_D12, main = "PACF (diff 1 + seasonal diff 12)", lag.max = 48, na.action = na.pass)
 par(mfrow = c(1, 1))
 dev.off()
 
@@ -152,8 +142,7 @@ run_tests <- function(x, series_name) {
 
 stationarity_results <- rbind(
   run_tests(full_ts, "raw"),
-  run_tests(full_ts_log, "log1p"),
-  run_tests(full_ts_log_d1_D12, "log1p + diff(1) + seasonal diff(12)")
+  run_tests(full_ts_d1_D12, "raw + diff(1) + seasonal diff(12)")
 )
 
 write.csv(
@@ -173,7 +162,7 @@ arima_results <- run_arima_model(train_ts, test_ts)  # your function decides tra
 print(arima_results$metrics)
 
 cat("\n===== Prophet Model =====\n")
-prophet_results <- run_prophet_model(train_data, test_data, use_log1p = TRUE)
+prophet_results <- run_prophet_model(train_data, test_data, use_log1p = FALSE)
 print(prophet_results$metrics)
 
 cat("\n===== Regime Prophet Model =====\n")
@@ -215,6 +204,51 @@ write.csv(
 )
 
 cat("\nSaved metrics to outputs/results/model_metrics.csv\n")
+
+# ============================================================
+# 5) Export forecast values for each model
+# ============================================================
+
+# ARIMA forecasts: derive dates from test_ts time attributes
+arima_dates <- as.Date(as.yearmon(time(test_ts)))
+arima_forecasts_df <- data.frame(
+  date      = arima_dates,
+  actual    = arima_results$actual,
+  predicted = arima_results$predicted
+)
+write.csv(
+  arima_forecasts_df,
+  file = here("outputs", "results", "arima_forecasts.csv"),
+  row.names = FALSE
+)
+cat("Saved ARIMA forecasts to outputs/results/arima_forecasts.csv\n")
+
+# Prophet Normal forecasts
+prophet_forecasts_df <- data.frame(
+  date      = as.Date(test_data$ds),
+  actual    = prophet_results$actual,
+  predicted = prophet_results$predicted
+)
+write.csv(
+  prophet_forecasts_df,
+  file = here("outputs", "results", "prophet_normal_forecasts.csv"),
+  row.names = FALSE
+)
+cat("Saved Prophet Normal forecasts to outputs/results/prophet_normal_forecasts.csv\n")
+
+# Regime Prophet forecasts (includes full dataset with regime labels)
+regime_forecasts_df <- data.frame(
+  date      = as.Date(regime_results$combined_fit$ds),
+  actual    = regime_results$combined_fit$y,
+  predicted = regime_results$combined_fit$predicted,
+  regime    = regime_results$combined_fit$regime
+)
+write.csv(
+  regime_forecasts_df,
+  file = here("outputs", "results", "regime_prophet_forecasts.csv"),
+  row.names = FALSE
+)
+cat("Saved Regime Prophet forecasts to outputs/results/regime_prophet_forecasts.csv\n")
 
 # ---- Optional preview ----
 cat("\n===== Forecast preview =====\n")
