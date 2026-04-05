@@ -1,4 +1,4 @@
-# prophet_normal_model.R (improved)
+# prophet_normal_model.R 
 library(prophet)
 library(Metrics)
 
@@ -18,10 +18,10 @@ run_prophet_model <- function(train_data, test_data, use_log1p = FALSE) {
     yearly.seasonality = TRUE,
     weekly.seasonality = FALSE,
     daily.seasonality = FALSE,
-    seasonality.mode = "additive",
-    changepoint.prior.scale = 0.15,
+    seasonality.mode = "multiplicative",
+    changepoint.prior.scale = 0.2,
     seasonality.prior.scale = 10,
-    holidays.prior.scale = 10,
+    holidays.prior.scale = 5,
     fit = FALSE
   )
 

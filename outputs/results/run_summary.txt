@@ -1,0 +1,4 @@
+Run date/time: 2026-04-05 21:21:05.130127
+Project root: C:/Users/ASUS/OneDrive/Desktop/github repo/Sri-Lanka-tourism-arrival-forecasting-1
+Plots dir: C:/Users/ASUS/OneDrive/Desktop/github repo/Sri-Lanka-tourism-arrival-forecasting-1/outputs/plots
+Results dir: C:/Users/ASUS/OneDrive/Desktop/github repo/Sri-Lanka-tourism-arrival-forecasting-1/outputs/results

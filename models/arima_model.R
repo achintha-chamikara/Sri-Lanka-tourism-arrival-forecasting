@@ -1,17 +1,10 @@
-# arima_model.R (fixed + safer)
-# - Removes BoxCox auto (prevents Guerrero warning when zeros exist)
-# - Adds strict length checks
-# - Robust MAPE (ignores zero actuals)
+
 
 library(forecast)
 
 run_arima_model <- function(train_ts, test_ts) {
   stopifnot(length(test_ts) > 0)
 
-  # NOTE:
-  # If your data contains zeros/negatives (e.g., during COVID collapse),
-  # lambda="auto" triggers Guerrero warnings and can distort forecasts.
-  # Start without lambda. You can add transformations later.
   fit <- auto.arima(
     train_ts,
     seasonal = TRUE,

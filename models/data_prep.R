@@ -6,7 +6,7 @@ library(lubridate)
 library(tseries)
 
 load_and_prepare_data <- function(file_path = "data/Tourist Arrivals (2014 Jan - 2025 Dec).xlsx") {
-  # Read the Excel file
+  
   arrival_data <- read_excel(file_path)
   names(arrival_data) <- c("Year", "Month", "Tourist_Arrivals")
   
